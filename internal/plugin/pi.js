@@ -355,6 +355,13 @@ async function answer(events, { model, stream, res, said }) {
     if (why) return failure(statusOf(res(), why), why, kept(res()))
   }
   const id = "msg_pi_" + Math.random().toString(36).slice(2, 14)
+  // pi's start event names the prompt's usage before anything is said.
+  // Anthropic's message_start carries that usage; output stays 0 until
+  // message_delta. A client that reads message_start (Claude Code's context
+  // meter) otherwise shows 0% for the whole turn, since pi reports input
+  // only on done.
+  const begun = first.find((e) => e.type === "start")
+  const promptUsage = begun?.partial?.usage ? usageOf({ ...begun.partial.usage, output: 0 }) : usageOf()
   async function* all() {
     yield* first
     for (;;) {
@@ -395,7 +402,7 @@ async function answer(events, { model, stream, res, said }) {
   const body = new ReadableStream({
     async start(ctl) {
       const put = (type, data) => ctl.enqueue(enc.encode(sse(type, data)))
-      put("message_start", { message: { id, type: "message", role: "assistant", model, content: [], stop_reason: null, stop_sequence: null, usage: usageOf() } })
+      put("message_start", { message: { id, type: "message", role: "assistant", model, content: [], stop_reason: null, stop_sequence: null, usage: promptUsage } })
       let index = -1
       const open = new Map() // pi's content index → ours
       const begin = (ci, block) => {

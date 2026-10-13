@@ -263,6 +263,11 @@ func TestPiPackage(t *testing.T) {
 	if types[0] != "message_start" || types[len(types)-1] != "message_stop" {
 		t.Fatalf("events = %v", types)
 	}
+	// message_start carries the prompt usage pi named on start, output still 0
+	su := r.events[0]["message"].(map[string]any)["usage"].(map[string]any)
+	if su["input_tokens"] != 11.0 || su["output_tokens"] != 0.0 || su["cache_read_input_tokens"] != 3.0 || su["cache_creation_input_tokens"] != 2.0 {
+		t.Fatalf("message_start usage = %v", su)
+	}
 	md := r.events[len(r.events)-2]
 	u := md["usage"].(map[string]any)
 	if md["type"] != "message_delta" || md["delta"].(map[string]any)["stop_reason"] != "end_turn" || u["input_tokens"] != 11.0 || u["output_tokens"] != 7.0 || u["cache_read_input_tokens"] != 3.0 || u["cache_creation_input_tokens"] != 2.0 {
